@@ -1,0 +1,228 @@
+Item Code,Items Name (Key),Payment
+SFW-1,SF ကိုင်း (G) 'SC' High Speed,USD
+SFW-2,SF ကိုင်း (G) 'SC',USD
+SFW-3,SF ထွန်ခုံ (24) သွား (ရှပ်သေး),USD
+SFW-4,DF ထွန်ခုံ (18) သွား,USD
+SFW-5,DF ထွန်ခုံ (24) သွား,USD
+SFW-6,SF ရိတ်ခြွေ (Model 4LZ 1.5) ခေါင်းပိုင်းစုံ။,USD
+SFW-7,SF ရိတ်ခြွေ (Model 4LZ 1.0) ခေါင်းပိုင်းစုံ။,USD
+SFW-8,4 Wheel Tractor Model (354) (လိမ္မော်) (နွေတာယာတပ်လျှက်),USD
+SFW-9,4 Wheel Tracror Model (554) (လိမ္မော်) (မိုးတာယာတပ်လျှက်),USD
+SFE-1,SF 1100 G (ZS),USD
+SFE-2,SF 1100 N,USD
+SFE-3,SF 1110 G,USD
+SFE-4,SF 1110 N,USD
+SFE-5,SF 1115 G,USD
+SFE-6,SF 1115 N,USD
+SFE-7,SF 1115 M (CH),USD
+SFE-8,SF 1125 G,USD
+SFE-9,SF 1130 G,USD
+SFE-10,SF 195 N,USD
+SFT-1,400 x 8 တာယာ + ကျွတ်,MMK
+SFT-2,600 x 12 တာယာ + ကျွတ် (T),MMK
+XX-1,JY ကိုင်း (Gear) High Speed,USD
+XX-2,SDF (BP) ကိုင်း (Gear) (New),USD
+XX-3,JY ထွန်ခုံ (18) သွား (LB) (New),USD
+XX-4,JY ထွန်ခုံ (28) သွား,USD
+XX-5,JY ထွန်ခုံ (28) သွားမှ ဂီယာအုံ,USD
+XX-6,SDF (BP) ထွန်ခုံ (18) သွား,USD
+XX-7,SDF (BP) ထွန်ခုံ (24) သွား,USD
+XX-8,JY စူပါသံဘီး,USD
+XX-9,DF သံဘီး (16) လက်,USD
+XX-10,DF သံဘီး (18) လက်,USD
+XX-11,SHIFENG 1100 L (ZS),USD
+XX-12,SHIFENG 1110 L (ZS),USD
+XX-13,600 x 12 ဂွေ (SF),USD
+XX-14,400 x 8 ဂွေ (SF),USD
+XX-15,400 x 8 ဂွေ (DF),USD
+GN-1,GN ထွန်ခုံ (16) သွား,USD
+GN-2,GN ထွန်ခုံ (18) သွား,USD
+GN-3,GN သုံးသွားလင်ဗန်းထယ် (Gear),USD
+GN-4,GN မြက်ဖြတ်စက်,USD
+AU-1,ယိုးဒယားကိုင်း (NC+X) True Chang (ထွန်ခြစ် + သံဘီးပါ။),USD
+AU-2,ယိုးဒယားကိုင်း NC Plus x (New),USD
+AU-3,RE 140 Engine,USD
+AU-4,RE 155 Engine,USD
+AU-5,နှစ်သွားလင်ဗန်းထယ် (Auten),USD
+AU-6,ယိုးဒယားကိုင်း RE (141) မှ ထွန်ခြစ် (အပို),USD
+AU-7,ယိုးဒယားကိုင်း NC Plus x မှ ထွန်ခြစ် (New),USD
+JX-1,SF သုံးသွားလင်ဗန်းထယ် (Gear) ကားဂျွိုင်း,USD
+JX-2,DF သုံးသွားလင်ဗန်း (Gear) ကားဂျွိုင်း,USD
+JX-3,DF လေးချပ်လင်ဗန်းထယ် (Gear),USD
+JX-4,ယိုးဒယား သံဘီး (A) Type (J),USD
+JX-5,တစ်ဘီးထွန်စက် (Clutch) ကိုင်းလုံး,USD
+JX-6,တစ်ဘီးထွန်စက် မှ ထယ်,USD
+JX-7,တစ်ဘီးထွန်စက် မှ ထွန်ခြစ်,USD
+JX-8,တစ်ဘီးထွန်စက် မှ စက်တုံး,USD
+JX-9,တစ်ဘီးထွန်စက် မှ သံဘီး,USD
+KSM-2,KASAMA ထွန်ခုံ (18) သွား,USD
+KSM-1,"KASAMA ကိုင်း (Gear) ""S""",USD
+WY-1,WY 190 F (15.0 HP),USD
+WY-2,WY 192 F (17.0 HP),USD
+YM-1,Yanmar Combine Harvester YH 700 (With Dust Fan),USD
+YM-2,Yanmar Combine Harvester YH 850 (With Dust Fan),USD
+YM-3,Yanmar Dust Fan,USD
+YM-4,Yanmar ယိုးဒယားကိုင်း GT-1,USD
+YM-5,Yanmar Engine TF-120,USD
+YM-6,Yanmar Rotary Y 2000 (RH),USD
+YM-7,Yanmar Rotary Y 2200 (RHS),USD
+YM-8,"24"" Poly Plow (6) ချပ်လင်ဗန်းထယ်",USD
+YM-9,"26"" Poly Plow (7) ချပ်လင်ဗန်းထယ်",USD
+YM-10,"24"" (3) ချပ်လင်ဗန်းထယ် (Y-2430 PDL)",USD
+YM-11,Yanmar Tractor EF 725 T (FB) With SAR,USD
+YM-12,Yanmar Tractor YM 358 R ( With FB + SAR),USD
+YM-13,Yanmar Tractor 358R Front Loader With SAR,USD
+YM-14,Yanmar Tractor 358 R (With FB + SAR)(L-1),USD
+YM-15,D Support Kit,USD
+YM-16,EF 725T မှ Bonnet Cover,USD
+ACE-1,ACE လေးဘီးထွန်စက် (DI 7500),USD
+ACE-2,ACE လေးဘီးထွန်စက် (DI 9000),USD
+PRO-1,ရိတ်ခြွေကုန်းဘောင် (11'),MMK
+PRO-2,ရိတ်ခြွေကုန်းဘောင် (13'),MMK
+PRO-3,ရိတ်ခြွေကုန်းဘောင် (14'),MMK
+PRO-4,ယူဘိုးချောင်း,MMK
+PRO-5,(2) ပေါက်ပြား,MMK
+PRO-6,ထွေလာ မှ ကျောမှီ,MMK
+PRO-7,ထွေလာ မှ တူးဘောက်,MMK
+PRO-8,ထွေလာ ခြေနင်းပြား,MMK
+PRO-9,ထွေလာ ရှပ်တန်း (ရှယ်),MMK
+PRO-10,မှန်ကာခြေနင်းပြား(ရှယ်),MMK
+PRO-11,မှန်ကာကူရှင်,MMK
+PRO-12,မှန်ကာအမိုးပြား,MMK
+PRO-13,မှန်ကာကျောမှီ,MMK
+PRO-14,မှန်ကာတူးဘောက်,MMK
+PRO-15,မှန်ကာလက်တင်တန်း,MMK
+PRO-16,ထွေလာနောက်မားကဒ်+ဒေါက်,MMK
+PRO-17,မှန်ကာရှေ့မှန်ကိုင်း,MMK
+PRO-18,လက်တွန်းလှည်း (ပုံမှန်),MMK
+LOC-1,"22"" (6) ချပ် လင်ဗန်းထယ် (554)",MMK
+LOC-2,"22"" (18) ချပ် လင်ဗန်းထွန် (554)",MMK
+LOC-3,24'' (7) ချပ်လင်ဗန်းထယ် (CMT),MMK
+LOC-4,4 Wheel မှ 5' ထွန်ခုံ (42) သွား (F.K),MMK
+LOC-5,24 '' (20) ချပ်လင်ဗန်းထယ် (CMT),MMK
+LOC-6,24 '' (18) ချပ်လင်ဗန်းထယ် (FK),MMK
+LOC-7,7 ' ထွန်ခုံ (60) သွား (FK),MMK
+LOC-8,7 ' ထွန်ခုံ (54) သွား (Shaktiman),MMK
+LOC-9,ACE မှ ရှေ့ဂေါ် (9000),MMK
+LOC-10,ACE မှ ရှေ‌ဂေါ် (7500) (ကာဗာအပါ 1 ပြောင်းထိုး),MMK
+LOC-11,SF အမိုးပြား + ဒေါက် (354),MMK
+LOC-12,"DF ငရုပ်ဆုံရေယက်သံဘီး 27"" + ဒူးဆစ်ပါ။",MMK
+LOC-13,"DF ငရုပ်ဆုံရေယက်သံဘီး 29"" + ဒူးဆစ်ပါ။",MMK
+LOC-14,"DF ငရုပ်ဆုံရေယက်သံဘီး 27""",MMK
+LOC-15,"SF သံဘီး(27"") ပိုးပြီး",MMK
+LOC-16,ယိုးဒယား သံဘီး (A) Type (J) (B),MMK
+LOC-17,ဒီဇယ်,MMK
+LOC-18,ဓာတ်ဆီ,MMK
+LOC-19,ယိုးဒယား စက်တုံး (ထိုင်မောင်း),MMK
+LOC-20,ယိုးဒယားကိုင်း မှ ထွန်ခြစ်,MMK
+LOC-21,ယိုးဒယားကိုင်း မှ ခါးဆက်တုံး (ဂျွိုင်းဆက်),MMK
+LOC-22,ယိုးဒယားကိုင်း မှ ထယ်ချွန်,MMK
+LOC-23,ယိုးဒယားကိုင်း မှ ဘဲခြေထောက်,MMK
+LOC-24,ယိုးဒယားနှစ်သွားလင်ဗန်းထယ် (သံလျက်),MMK
+LOC-25,ထွေလာ မှ နတ်စုံ,MMK
+LOC-26,4' (5) ပေါက် အိတ်ဇယ်,MMK
+LOC-27,"3' 3"" (6) ပေါက် အိတ်ဇယ်",MMK
+LOC-28,4' (6) ပေါက် အိတ်ဇယ်,MMK
+LOC-29,16 ဂွေ (6) ပေါက်,MMK
+LOC-30,ထွေလာ ကူရှင် (အသေး),MMK
+LOC-31,အမဲဆီဂန်း,MMK
+LOC-32,ဂျိုက်+စပန်နာ,MMK
+LOC-33,ဝိတ်တုံး,MMK
+LOC-34,DF (12) ဂွေ,MMK
+LOC-35,650 x 16 တာယာ (China),MMK
+LOC-36,700 x 16 တာယာ (China),MMK
+LOC-37,750 x 16 တာယာ (China),MMK
+LOC-38,750 X 16 တာယာ + ကျွတ် (ကိုင်းမှတာယာ),MMK
+LOC-39,မှန်ကာနတ်စုံ,MMK
+LOC-40,မှန်ကာသံစိမ်းကျားပါးစပ်(သေး),MMK
+LOC-41,မှန်ကာသံစိမ်းကျားပါးစပ်(ကြီး),MMK
+LOC-42,မှန်ကာကူရှင်,MMK
+LOC-43,မီးခွက်မှန်,MMK
+LOC-44,ယိုးဒယားကိုင်း မှ စက်တုံး,MMK
+LOC-45,24'' (6) ချပ်လင်ဗန်းထယ် (CMT),MMK
+LOC-46,22 '' (18) ချပ်လင်ဗန်း (Agrovision),MMK
+PIS-1,"2"" x 3/16"" Flat",MMK
+PIS-2,1.2 mm sheet (ပြောင်),MMK
+PIS-3,2 mm sheet (ပြောင်),MMK
+PIS-4,2 mm sheet (ပန်း),MMK
+PIS-5,"1"" x 1/2"" Flat",MMK
+PIS-6,"1 ¼"" x 3/16"" Flat",MMK
+PIS-7,"2"" x 3/16"" Flat",MMK
+PIS-8,"2"" x 3/8"" Flat",MMK
+PIS-9,"3"" x 3/8"" Flat",MMK
+PIS-10,"3/8"" ø Solid",MMK
+PIS-11,"5/8"" ø Solid",MMK
+PIS-12,"3/4"" ø Solid",MMK
+PIS-13,"3/4"" ကြွတ်ပိုက်ထူ",MMK
+PIS-14,"3/4"" Pipe (ထူ)",MMK
+ASS-1,စီလယ် ခါးဆက်ဘွတ်,MMK
+ASS-2,စီလယ် စက်အထိုင် မှ နတ်တိုင်ရှည်,MMK
+ASS-3,DF စီလယ် အပေါ်ကလပ်တံ(တို),MMK
+ASS-4,DF စီလယ် အပေါ်ကလပ်တံ(ရှည်),MMK
+ASS-5,မှန်ကာ အောက်ကလပ်တံ,MMK
+ASS-6,မှန်ကာ တိုက်ရော့,MMK
+ASS-7,မှန်ကာ ဝှိုက်ဘာ,MMK
+ASS-8,မှန်ကာ ဘက်ကြည်မှန်,MMK
+ASS-9,မှန်ကာ မိန်းဂီယာတံ (ဖြူ),MMK
+ASS-10,မှန်ကာ မိန်းဂီယာတံ (မဲ),MMK
+ASS-11,မှန်ကာ မိန်းဂီယာတံ(နှေး၊မြန်),MMK
+ASS-12,မှန်ကာ ကလပ်ပုခက်,MMK
+ASS-13,"7"" ပူလီ",MMK
+ASS-14,ရှေ့မားကဒ်ဒေါက် (600 x 12),MMK
+ASS-15,ရှေ့မားကဒ်ဒေါက် (600 x 14),MMK
+ASS-16,SDF(BP)ရှေ့မားကဒ်ဒေါက် (600x14),MMK
+ASS-17,ဂီယာဂျက်,MMK
+ASS-18,ကျားပါးစပ်ယူဘိုးချောင်း(၂)ပေါက်ပြားတပ်လျက်,MMK
+ASS-19,စီလယ် မိန်းဂီယာတံ,MMK
+ASS-20,ရှေ့လေးခွာ,MMK
+ASS-21,နောက်လေးခွာ,MMK
+ASS-22,နောက်လေးခွာ (အမြင့်),MMK
+ASS-23,ခါးဆက်တုံး,MMK
+ASS-24,ခါးဆက်ယူဘိုး,MMK
+ASS-25,"7"" ဘီး+ ဖလမ်း",MMK
+ASS-26,ထွေလာနောက်ပိတ်ချိတ်,MMK
+ASS-27,DF ကလပ်ဖုံး,MMK
+SAM-1,SF လေး (9) ထပ် (Sifang),MMK
+SAM-2,750 x 16 ယိုးဒယားတာယာ (Auten),MMK
+SAM-3,4 Disc Plough (ILYQ-420 DFC),MMK
+SAM-4,DF ကိုင်းဆင်ရန် နမူနာ (Seat Frame) (ထယ်စဉ် + ဂွတိုင်+ ဖင်ထိုင်ရှပ်တန်း + နောက်လိုက်သံဘီး+ ဖင်ထိုင်ပြား + စက္ကူပါကင်),MMK
+SAM-5,လေးချပ်ထယ် မှ ရှပ်,MMK
+SAM-6,JY (Chain) ဂီယာအုံ,MMK
+SAM-7,ဂျွိုင်းဆက် + ဂျမ်းနတ်,MMK
+SAM-8,JY ကိုင်း မှ Fork (New Design) (ဆိုက္ကလစ်ဂွ),MMK
+SAM-9,JY Rotary (28) မှ Longer Connector,MMK
+SAM-10,လေးချပ်လင်ဗန်းထယ် မှ ဂီယာဘောက်,MMK
+SAM-11,16 ဂွေ (4)ပေါက်(ရွှေမြိုင်မှနမူနာပေး),MMK
+SAM-12,SF သုံးသွားလင်ဗန်းခုံမှ လင်ဗန်းချပ်,MMK
+SAM-13,4 Wheel မှ ဒိုင်ခွက် (554),MMK
+CMS,CH 4LZ 2.1 မှ Gear Box Assy (JY 50),MMK
+DPS-1,SF သိပ္ပံထယ်,MMK
+DPS-2,ကောက်စိုက်စက် (2) Line,MMK
+DPS-3,ကောက်စိုက်စက် (3) Line,MMK
+DPS-4,"Snapper 20"" push (ဆေးဖျန်းစက်)",MMK
+DPS-5,စပါးသိမ်းစက်,MMK
+DPS-6,Marine Gearbox (1.6),MMK
+OTS-1,554 မှ နောက်ဝိတ်တုံး (အပြင်),MMK
+OTS-2,354 နောက်ဝိတ်တုံး (အပို) အသစ်,MMK
+OTS-3,354 နောက်ဝိတ်တုံး (အပို) အဟောင်း,MMK
+OTS-4,IC (16 HP) (with oil sensor),MMK
+OTS-5,BJ ကား မှ ရှေ့နေကာမှန်,MMK
+OTS-6,BJ ကား မှ နောက်ကျောမှန်,MMK
+,,
+INT-1,1.5% x 6 လစာအတိုး,MMK
+INT-2,1.5% x 8 လစာအတိုး,MMK
+INT-3,1.5% x 3 လစာအတိုး,MMK
+INT-4,1.5% x 12 လစာအတိုး,MMK
+INT-5,1.5% x 7 လစာအတိုး,MMK
+INT-6,1.5% x 9 လစာအတိုး,MMK
+INT-7,1.5% x 1 လစာအတိုး,MMK
+INT-8,1.5% x 2 လစာအတိုး,MMK
+,,
+Whole Sale,1401 - နယ်ကုန်သည်များ ကြွေးကျန် - SYS,
+YGN HP,1402 - YGN (HP) ။ - SYS,
+YGN လက်လီ,1403 - YGN (HP) (လက်လီ) ။ - SYS,
+SB HP,1405 - SYS - SB ။ ။ - SYS,
+PT HP,1406 - SYS - PT ။ ။ - SYS,
+HTD HP,1408 - SYS - HTD ။ ။ - SYS,
+Cashdown,1900 - Temporary Account MMK - SYS,
+MCB ,1900 - Temporary Account MMK - SYS,
