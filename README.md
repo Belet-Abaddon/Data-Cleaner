@@ -1,4 +1,4 @@
-# ERP Sales Order Data Cleaner (GUI)
+# ERP Data Cleaner (GUI)
 
 An automated desktop tool built with Python, Pandas, and PyWebView to clean, parse, and transform messy raw sales invoice CSV/Excel exports into structured, ERPNext/Frappe-ready Sales Order import formats.
 
