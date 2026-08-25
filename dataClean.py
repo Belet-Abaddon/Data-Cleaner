@@ -1,6 +1,6 @@
 import os
 import csv
-import re
+import json
 import webview
 from webview import FileDialog
 import pandas as pd
@@ -154,6 +154,13 @@ SALES_INVOICE_COLUMNS = [
     'Sales Person (Sales Contributions and Incentives)'
 ]
 
+IGNORE_SUMMARY_KEYWORDS = [
+    'Customer :', 'Location :', 'MemberCard :', 'Docid :', 'Payment :',
+    'Member Discount', 'Tax', 'Invoice Total', 'Item Discount', 'Voucher Discount', 
+    'Advance Pay', 'Paid Amount', 'Net Amount', 'Total Amount', 'Total Item Discount', 
+    'Total VouDiscount', 'Total Tax', 'Total AdvancePay', 'Total Paid'
+]
+
 class Api:
     def __init__(self):
         self._window = None
@@ -163,10 +170,7 @@ class Api:
 
     def select_file(self, file_type):
         """Native Open/Save File Dialog"""
-        if file_type == 'raw':
-            res = self._window.create_file_dialog(FileDialog.OPEN, allow_multiple=False, file_types=('CSV Files (*.csv)', 'All files (*.*)'))
-            return res[0] if res else ""
-        elif file_type == 'erp':
+        if file_type in ['raw', 'erp']:
             res = self._window.create_file_dialog(FileDialog.OPEN, allow_multiple=False, file_types=('CSV Files (*.csv)', 'All files (*.*)'))
             return res[0] if res else ""
         elif file_type == 'out':
@@ -176,7 +180,78 @@ class Api:
             return res if res else ""
         return ""
 
-    def run_cleaning(self, config):
+    def check_unmapped_items(self, raw_file, erp_mapping_file):
+        """Pre-scan raw CSV for missing ERP mappings excluding summary/footer lines"""
+        try:
+            if not os.path.exists(raw_file):
+                return {'success': False, 'message': 'Raw file not found'}
+            
+            mapping_dict = {}
+            erp_items = []
+            if os.path.exists(erp_mapping_file):
+                map_df = pd.read_csv(erp_mapping_file)
+                for _, row in map_df.iterrows():
+                    code = str(row['Item Code']).strip()
+                    name = str(row['Items Name (Key)']).strip()
+                    payment = str(row['Payment']).strip()
+                    mapping_dict[name] = {'code': code, 'name': name, 'payment': payment}
+                    mapping_dict[code] = {'code': code, 'name': name, 'payment': payment}
+                    erp_items.append({'code': code, 'name': name, 'payment': payment})
+
+            with open(raw_file, mode='r', encoding='utf-8-sig', errors='ignore') as f:
+                reader = list(csv.reader(f))
+
+            invoices = []
+            current_inv = None
+            for row in reader:
+                if not any(row):
+                    continue
+                row_str = " ".join(row)
+                if "Docid :" in row_str:
+                    if current_inv:
+                        invoices.append(current_inv)
+                    current_inv = {'items': []}
+                elif current_inv is not None:
+                    if ('Code' in row[0] and 'Description' in row_str) or any(k in row_str for k in IGNORE_SUMMARY_KEYWORDS):
+                        continue
+                    current_inv['items'].append(row)
+            if current_inv:
+                invoices.append(current_inv)
+
+            unmapped = {}
+            for inv in invoices:
+                for it in inv['items']:
+                    found = False
+                    for cell in it:
+                        c_clean = cell.strip()
+                        if c_clean in mapping_dict:
+                            found = True
+                            break
+                    if not found:
+                        valid_cells = [c.strip() for c in it if c.strip()]
+                        if valid_cells:
+                            # Skip if cell contains summary terms or is clearly a total row
+                            if any(k in valid_cells[0] for k in IGNORE_SUMMARY_KEYWORDS):
+                                continue
+                            
+                            key_identifier = valid_cells[1] if len(valid_cells) > 1 else valid_cells[0]
+                            if key_identifier not in unmapped:
+                                unmapped[key_identifier] = {
+                                    'raw_code': valid_cells[0],
+                                    'raw_name': valid_cells[1] if len(valid_cells) > 1 else valid_cells[0],
+                                    'example_row': " | ".join(valid_cells)
+                                }
+
+            return {
+                'success': True,
+                'unmapped_count': len(unmapped),
+                'unmapped_items': list(unmapped.values()),
+                'erp_options': erp_items
+            }
+        except Exception as e:
+            return {'success': False, 'message': str(e)}
+
+    def run_cleaning(self, config, custom_mappings=None):
         try:
             raw_file = config.get('raw_file', '').strip()
             erp_mapping_file = config.get('erp_mapping_file', '').strip() or "ERP Code - Sheet1.csv"
@@ -188,11 +263,7 @@ class Api:
             out_dir = os.path.dirname(output_file)
             if out_dir:
                 os.makedirs(out_dir, exist_ok=True)
-            else:
-                os.makedirs("cleaned_csv", exist_ok=True)
-                output_file = os.path.join("cleaned_csv", output_file)
 
-            # 1. Read ERP Mapping
             mapping_dict = {}
             if os.path.exists(erp_mapping_file):
                 map_df = pd.read_csv(erp_mapping_file)
@@ -203,7 +274,24 @@ class Api:
                     mapping_dict[item_name] = {'code': item_code, 'name': item_name, 'payment': payment}
                     mapping_dict[item_code] = {'code': item_code, 'name': item_name, 'payment': payment}
 
-            # 2. Read Raw CSV
+            # Runtime mapping update & auto-save into ERP mapping CSV
+            if custom_mappings and isinstance(custom_mappings, list):
+                new_mappings_for_csv = []
+                for m in custom_mappings:
+                    raw_key = m.get('raw_key', '').strip()
+                    selected_code = m.get('selected_code', '').strip()
+                    selected_name = m.get('selected_name', '').strip()
+                    selected_payment = m.get('selected_payment', 'MMK').strip()
+
+                    if raw_key and selected_code:
+                        entry = {'code': selected_code, 'name': selected_name, 'payment': selected_payment}
+                        mapping_dict[raw_key] = entry
+                        new_mappings_for_csv.append({'Item Code': selected_code, 'Items Name (Key)': raw_key, 'Payment': selected_payment})
+
+                if new_mappings_for_csv and os.path.exists(erp_mapping_file):
+                    append_df = pd.DataFrame(new_mappings_for_csv)
+                    append_df.to_csv(erp_mapping_file, mode='a', header=False, index=False, encoding='utf-8-sig')
+
             with open(raw_file, mode='r', encoding='utf-8-sig', errors='ignore') as f:
                 reader = list(csv.reader(f))
 
@@ -224,7 +312,7 @@ class Api:
                         current_inv['header'].append(row)
                     elif 'Code' in row[0] and 'Description' in row_str:
                         continue
-                    elif any(k in row[0] for k in ['Member Discount', 'Tax', 'Invoice Total', 'Item Discount', 'Voucher Discount', 'Advance Pay', 'Paid Amount', 'Net Amount']):
+                    elif any(k in row_str for k in IGNORE_SUMMARY_KEYWORDS):
                         current_inv['summary'].append(row)
                     else:
                         current_inv['items'].append(row)
@@ -271,8 +359,7 @@ class Api:
                             matched_info = mapping_dict[c_clean]
                             final_item_code = matched_info['code']
                             item_name = matched_info['name']
-                            if c_clean != final_item_code:
-                                break
+                            break
 
                     if not final_item_code:
                         continue
@@ -281,7 +368,7 @@ class Api:
                     for cell in it:
                         c = cell.strip().replace(',', '')
                         if c != "" and (c.isdigit() or (c.replace('.', '', 1).isdigit() and '.' in c)):
-                            num_cells.append(cell.strip().replace(',', ''))
+                            num_cells.append(c)
 
                     qty = 1
                     rate = 0
@@ -301,10 +388,8 @@ class Api:
 
                     is_free = 1 if rate == 0 else 0
 
-                    # 360-column record dictionary initialization
                     row_data = {col: "" for col in SALES_INVOICE_COLUMNS}
 
-                    # Header Columns (Only on First Item of Invoice)
                     if first_item:
                         row_data['Company'] = config.get('company', 'Seinn Yaung So')
                         row_data['Series'] = config.get('series', 'ACC-SINV-.YYYY.-')
@@ -319,7 +404,6 @@ class Api:
                         row_data['Is Opening Entry'] = 'No'
                         row_data['Remarks'] = invoice_no
 
-                    # Child Item Columns
                     row_data['Item (Items)'] = final_item_code
                     row_data['Item Name (Items)'] = item_name
                     row_data['Description (Items)'] = item_name
@@ -347,7 +431,6 @@ class Api:
                     final_rows.append(row_data)
                     first_item = False
 
-            # Export to CSV with full 360-column standard layout
             with open(output_file, mode='w', encoding='utf-8-sig', newline='') as f:
                 writer = csv.DictWriter(f, fieldnames=SALES_INVOICE_COLUMNS)
                 writer.writeheader()
@@ -363,7 +446,6 @@ class Api:
         except Exception as e:
             return {'success': False, 'message': str(e)}
 
-# Modern Web UI Layout
 HTML_UI = """
 <!DOCTYPE html>
 <html lang="en">
@@ -393,10 +475,10 @@ HTML_UI = """
         .form-group { margin-bottom: 12px; }
         .form-group label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
         .input-row { display: flex; gap: 8px; }
-        input[type="text"] { flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; outline: none; transition: border 0.2s; }
-        input[type="text"]:focus { border-color: var(--primary); }
+        input[type="text"], select { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; outline: none; transition: border 0.2s; }
+        input[type="text"]:focus, select:focus { border-color: var(--primary); }
         
-        .btn-browse { padding: 8px 14px; background: #f1f5f9; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; }
+        .btn-browse { padding: 8px 14px; background: #f1f5f9; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
         .btn-browse:hover { background: #e2e8f0; }
 
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -405,13 +487,21 @@ HTML_UI = """
         .btn-primary:hover { background: var(--primary-hover); }
 
         .log-box { margin-top: 12px; padding: 12px; background: #0f172a; color: #38bdf8; border-radius: 6px; font-family: monospace; font-size: 12px; min-height: 70px; max-height: 140px; overflow-y: auto; white-space: pre-line; }
+
+        /* Modal Popup */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: #fff; width: 90%; max-width: 820px; max-height: 85vh; border-radius: 12px; padding: 24px; display: flex; flex-direction: column; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+        .modal-body { overflow-y: auto; flex: 1; margin-bottom: 16px; }
+        .mapping-row { display: grid; grid-template-columns: 1.2fr 1.8fr; gap: 12px; padding: 10px; background: #f8fafc; border-radius: 6px; margin-bottom: 8px; border: 1px solid var(--border); align-items: center; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>ERP Sales Invoice Data Cleaner</h1>
-            <p>Clean raw invoice exports and transform into full ERPNext Sales Invoice import format</p>
+            <p>Clean raw invoice exports with automated interactive mapping</p>
         </div>
 
         <div class="card">
@@ -419,7 +509,7 @@ HTML_UI = """
             <div class="form-group">
                 <label>Raw CSV File</label>
                 <div class="input-row">
-                    <input type="text" id="raw_file" placeholder="Select uncleaned raw CSV file (e.g. Sale Invoice (Feb to June) - 4 April.csv)...">
+                    <input type="text" id="raw_file" placeholder="Select uncleaned raw CSV file...">
                     <button class="btn-browse" onclick="browseFile('raw')">Browse</button>
                 </div>
             </div>
@@ -431,9 +521,9 @@ HTML_UI = """
                 </div>
             </div>
             <div class="form-group">
-                <label>Output CSV File (Saved in <code>cleaned_csv/</code>)</label>
+                <label>Output CSV File</label>
                 <div class="input-row">
-                    <input type="text" id="output_file" value="cleaned_csv/SYS2_Import_Sales_Invoice_April2026_FULL.csv">
+                    <input type="text" id="output_file" value="cleaned_csv/Cleaned_Sales_Invoice.csv">
                     <button class="btn-browse" onclick="browseFile('out')">Save As</button>
                 </div>
             </div>
@@ -455,15 +545,35 @@ HTML_UI = """
             </div>
         </div>
 
-        <button class="btn-primary" onclick="runCleaner()">⚡ Start Data Cleaning</button>
+        <button class="btn-primary" onclick="startProcess()">⚡ Start Data Cleaning</button>
 
         <div class="log-box" id="logBox">Ready to process...</div>
     </div>
 
+    <!-- Interactive Mapping Modal -->
+    <div class="modal" id="mapModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h3 style="font-size: 16px; font-weight: 700;">Unmapped Items Detected</h3>
+                    <p style="font-size: 12px; color: var(--text-muted);">Please link raw item names with the correct ERP items below:</p>
+                </div>
+            </div>
+            <div class="modal-body" id="mappingList"></div>
+            <div class="modal-footer">
+                <button class="btn-browse" onclick="closeModal()">Skip & Ignore</button>
+                <button class="btn-primary" style="width: auto; padding: 8px 20px;" onclick="applyMappingsAndRun()">Save & Continue Cleaning</button>
+            </div>
+        </div>
+    </div>
+
     <script>
+        let currentConfig = {};
+        let cachedUnmappedItems = [];
+        let cachedErpOptions = [];
+
         function log(msg) {
-            const box = document.getElementById('logBox');
-            box.innerText = msg;
+            document.getElementById('logBox').innerText = msg;
         }
 
         async function browseFile(type) {
@@ -475,15 +585,9 @@ HTML_UI = """
             }
         }
 
-        async function runCleaner() {
-            const rawFile = document.getElementById('raw_file').value.trim();
-            if (!rawFile) {
-                alert("Please select a Raw CSV file first.");
-                return;
-            }
-
-            const config = {
-                raw_file: rawFile,
+        function getFormConfig() {
+            return {
+                raw_file: document.getElementById('raw_file').value.trim(),
                 erp_mapping_file: document.getElementById('erp_mapping_file').value.trim(),
                 output_file: document.getElementById('output_file').value.trim(),
                 series: document.getElementById('series').value.trim(),
@@ -497,12 +601,86 @@ HTML_UI = """
                 uom: document.getElementById('uom').value.trim(),
                 uom_conv: document.getElementById('uom_conv').value.trim()
             };
+        }
 
-            log("Processing... Please wait.");
-            const res = await pywebview.api.run_cleaning(config);
+        async function startProcess() {
+            currentConfig = getFormConfig();
+            if (!currentConfig.raw_file) {
+                alert("Please select a Raw CSV file first.");
+                return;
+            }
+
+            log("Scanning raw file for unmapped items...");
+            const scan = await pywebview.api.check_unmapped_items(currentConfig.raw_file, currentConfig.erp_mapping_file);
+            
+            if (scan.success && scan.unmapped_count > 0) {
+                cachedUnmappedItems = scan.unmapped_items;
+                cachedErpOptions = scan.erp_options;
+                showMappingModal(cachedUnmappedItems, cachedErpOptions);
+            } else {
+                executeCleaning([]);
+            }
+        }
+
+        function showMappingModal(unmapped, erpOptions) {
+            const list = document.getElementById('mappingList');
+            list.innerHTML = "";
+
+            unmapped.forEach((item, index) => {
+                let optionsHtml = `<option value="">-- Ignore this item --</option>`;
+                erpOptions.forEach(opt => {
+                    optionsHtml += `<option value="${opt.code}" data-name="${opt.name}" data-payment="${opt.payment}">${opt.code} | ${opt.name} (${opt.payment})</option>`;
+                });
+
+                const row = document.createElement('div');
+                row.className = 'mapping-row';
+                row.innerHTML = `
+                    <div>
+                        <strong style="font-size: 13px; color: #b91c1c;">${item.raw_name}</strong>
+                        <div style="font-size: 11px; color: #64748b;">Code: ${item.raw_code}</div>
+                    </div>
+                    <div>
+                        <select id="map_select_${index}">
+                            ${optionsHtml}
+                        </select>
+                    </div>
+                `;
+                list.appendChild(row);
+            });
+
+            document.getElementById('mapModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('mapModal').style.display = 'none';
+            executeCleaning([]);
+        }
+
+        async function applyMappingsAndRun() {
+            const mappings = [];
+            cachedUnmappedItems.forEach((item, index) => {
+                const sel = document.getElementById(`map_select_${index}`);
+                if (sel && sel.value) {
+                    const selectedOpt = sel.options[sel.selectedIndex];
+                    mappings.push({
+                        raw_key: item.raw_name,
+                        selected_code: sel.value,
+                        selected_name: selectedOpt.getAttribute('data-name'),
+                        selected_payment: selectedOpt.getAttribute('data-payment')
+                    });
+                }
+            });
+
+            document.getElementById('mapModal').style.display = 'none';
+            executeCleaning(mappings);
+        }
+
+        async function executeCleaning(mappings) {
+            log("Processing Sales Invoice cleaning... Please wait.");
+            const res = await pywebview.api.run_cleaning(currentConfig, mappings);
             if (res.success) {
                 log(`✔ [SUCCESS] Processed ${res.total_invoices} invoices (${res.total_items} items).\\nOutput File: ${res.output_file}`);
-                alert(`Success!\\nCleaned File: ${res.output_file}\\nTotal Invoices: ${res.total_invoices}`);
+                alert(`Success!\\nCleaned File: ${res.output_file}\\nTotal Invoices: ${res.total_invoices}\\nTotal Items: ${res.total_items}`);
             } else {
                 log(`❌ [ERROR] ${res.message}`);
                 alert("Error: " + res.message);
@@ -519,8 +697,8 @@ def main():
         title='ERP Sales Invoice Cleaning Tool',
         html=HTML_UI,
         js_api=api,
-        width=850,
-        height=720,
+        width=880,
+        height=740,
         resizable=True
     )
     api.set_window(window)

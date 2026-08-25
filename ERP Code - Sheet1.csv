@@ -225,4 +225,8 @@ SB HP,1405 - SYS - SB ။ ။ - SYS,
 PT HP,1406 - SYS - PT ။ ။ - SYS,
 HTD HP,1408 - SYS - HTD ။ ။ - SYS,
 Cashdown,1900 - Temporary Account MMK - SYS,
-MCB ,1900 - Temporary Account MMK - SYS,
+MCB ,1900 - Temporary Account MMK - SYS,INT-1,အတိုးရငွေ,MMK
+INT-1,1.5% x 6 လစာတိုးရငွေ,MMK
+INT-1,1.5 % x 6 လစာအတိုးရငွေ,MMK
+XX-6,SDF (L) ထွန်ခုံ (18) သွား,USD
+LOC-11,SF အမိုးပြား  + ဒေါက် (354),MMK
