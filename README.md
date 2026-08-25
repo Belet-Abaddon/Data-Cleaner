@@ -43,7 +43,7 @@ venv\Scripts\activate
 pip install -r requirements.txt
 
 # Launch Application
-python app_webview.py
+python dataClean.py
 ```
 🍏 macOS Setup
 1. Prerequisites
@@ -64,7 +64,7 @@ pip install -r requirements.txt
 pip install pyobjc-framework-WebKit
 
 # Launch Application
-python app_webview.py
+python dataClean.py
 ```
 🐧 Linux (Ubuntu / Debian / Mint) Setup
 1. System Dependencies
@@ -86,7 +86,7 @@ pip install -r requirements.txt
 pip install PyQt6 PyQt6-WebEngine qtpy
 
 # Launch Application
-python app_webview.py
+python dataClean.py
 ```
 📖 How to Use
 Launch the application via python app_webview.py.
