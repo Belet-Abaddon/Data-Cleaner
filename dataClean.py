@@ -1,6 +1,7 @@
 import os
 import csv
 import json
+import re
 import webview
 from webview import FileDialog
 import pandas as pd
@@ -161,6 +162,53 @@ IGNORE_SUMMARY_KEYWORDS = [
     'Total VouDiscount', 'Total Tax', 'Total AdvancePay', 'Total Paid'
 ]
 
+def load_erp_mapping(erp_mapping_file):
+    mapping_dict = {}
+    erp_items = []
+    if os.path.exists(erp_mapping_file):
+        try:
+            map_df = pd.read_csv(erp_mapping_file, on_bad_lines='skip', encoding='utf-8-sig')
+            for _, row in map_df.iterrows():
+                code = str(row.get('Item Code', '')).strip()
+                name = str(row.get('Items Name (Key)', '')).strip()
+                payment = str(row.get('Payment', 'USD')).strip()
+                if code and name and code != 'nan' and name != 'nan':
+                    mapping_dict[name] = {'code': code, 'name': name, 'payment': payment}
+                    mapping_dict[code] = {'code': code, 'name': name, 'payment': payment}
+                    erp_items.append({'code': code, 'name': name, 'payment': payment})
+        except Exception as e:
+            print(f"Error loading mapping CSV: {e}")
+    return mapping_dict, erp_items
+
+def parse_invoices_from_raw(raw_file):
+    with open(raw_file, mode='r', encoding='utf-8-sig', errors='ignore') as f:
+        reader = list(csv.reader(f))
+
+    invoices = []
+    current_inv = None
+
+    for row in reader:
+        if not any(row):
+            continue
+        row_str = " ".join(row)
+        if "Docid :" in row_str:
+            if current_inv:
+                invoices.append(current_inv)
+            current_inv = {'header': [row], 'items': [], 'summary': []}
+        elif current_inv is not None:
+            if any(k in row_str for k in ['Customer :', 'Location :', 'MemberCard :', 'Payment :']):
+                current_inv['header'].append(row)
+            elif 'Code' in row[0] and 'Description' in row_str:
+                continue
+            elif any(k in row_str for k in IGNORE_SUMMARY_KEYWORDS):
+                current_inv['summary'].append(row)
+            else:
+                current_inv['items'].append(row)
+    if current_inv:
+        invoices.append(current_inv)
+
+    return invoices
+
 class Api:
     def __init__(self):
         self._window = None
@@ -169,7 +217,6 @@ class Api:
         self._window = window
 
     def select_file(self, file_type):
-        """Native Open/Save File Dialog"""
         if file_type in ['raw', 'erp']:
             res = self._window.create_file_dialog(FileDialog.OPEN, allow_multiple=False, file_types=('CSV Files (*.csv)', 'All files (*.*)'))
             return res[0] if res else ""
@@ -181,46 +228,33 @@ class Api:
         return ""
 
     def check_unmapped_items(self, raw_file, erp_mapping_file):
-        """Pre-scan raw CSV for missing ERP mappings excluding summary/footer lines"""
+        """Scan raw CSV and extract context-rich unmapped items with remark suggestions"""
         try:
             if not os.path.exists(raw_file):
                 return {'success': False, 'message': 'Raw file not found'}
             
-            mapping_dict = {}
-            erp_items = []
-            if os.path.exists(erp_mapping_file):
-                map_df = pd.read_csv(erp_mapping_file)
-                for _, row in map_df.iterrows():
-                    code = str(row['Item Code']).strip()
-                    name = str(row['Items Name (Key)']).strip()
-                    payment = str(row['Payment']).strip()
-                    mapping_dict[name] = {'code': code, 'name': name, 'payment': payment}
-                    mapping_dict[code] = {'code': code, 'name': name, 'payment': payment}
-                    erp_items.append({'code': code, 'name': name, 'payment': payment})
+            erp_mapping_file = erp_mapping_file or "ERP Code - Sheet1.csv"
+            mapping_dict, erp_items = load_erp_mapping(erp_mapping_file)
+            invoices = parse_invoices_from_raw(raw_file)
 
-            with open(raw_file, mode='r', encoding='utf-8-sig', errors='ignore') as f:
-                reader = list(csv.reader(f))
+            unmapped_list = []
 
-            invoices = []
-            current_inv = None
-            for row in reader:
-                if not any(row):
-                    continue
-                row_str = " ".join(row)
-                if "Docid :" in row_str:
-                    if current_inv:
-                        invoices.append(current_inv)
-                    current_inv = {'items': []}
-                elif current_inv is not None:
-                    if ('Code' in row[0] and 'Description' in row_str) or any(k in row_str for k in IGNORE_SUMMARY_KEYWORDS):
-                        continue
-                    current_inv['items'].append(row)
-            if current_inv:
-                invoices.append(current_inv)
+            for inv_idx, inv in enumerate(invoices):
+                invoice_no = ""
+                customer = ""
+                remark = ""
 
-            unmapped = {}
-            for inv in invoices:
-                for it in inv['items']:
+                for h_row in inv['header']:
+                    for cell in h_row:
+                        cell_s = cell.strip()
+                        if cell_s.startswith("InvoiceNo :"):
+                            invoice_no = cell_s.replace("InvoiceNo :", "").strip()
+                        elif cell_s.startswith("Customer :"):
+                            customer = cell_s.replace("Customer :", "").strip()
+                        elif cell_s.startswith("Remark :") or "Remark :" in cell_s:
+                            remark = cell_s[cell_s.find("Remark :") + 8:].strip()
+
+                for item_idx, it in enumerate(inv['items']):
                     found = False
                     for cell in it:
                         c_clean = cell.strip()
@@ -230,22 +264,48 @@ class Api:
                     if not found:
                         valid_cells = [c.strip() for c in it if c.strip()]
                         if valid_cells:
-                            # Skip if cell contains summary terms or is clearly a total row
                             if any(k in valid_cells[0] for k in IGNORE_SUMMARY_KEYWORDS):
                                 continue
-                            
-                            key_identifier = valid_cells[1] if len(valid_cells) > 1 else valid_cells[0]
-                            if key_identifier not in unmapped:
-                                unmapped[key_identifier] = {
-                                    'raw_code': valid_cells[0],
-                                    'raw_name': valid_cells[1] if len(valid_cells) > 1 else valid_cells[0],
-                                    'example_row': " | ".join(valid_cells)
-                                }
+
+                            raw_code = valid_cells[0]
+                            raw_name = valid_cells[1] if len(valid_cells) > 1 else valid_cells[0]
+                            amount = valid_cells[-1] if len(valid_cells) > 2 else ""
+
+                            # Smart Auto-Suggestion based on Remark
+                            suggested_code = ""
+                            rem_lower = (remark + " " + raw_name).lower()
+                            if "12 month" in rem_lower or "12 လ" in rem_lower:
+                                suggested_code = "INT-4" # 1.5% x 12 လစာအတိုး
+                            elif "6 month" in rem_lower or "6 လ" in rem_lower:
+                                suggested_code = "INT-1" # 1.5% x 6 လစာအတိုး
+                            elif "8 month" in rem_lower or "8 လ" in rem_lower:
+                                suggested_code = "INT-2" # 1.5% x 8 လစာအတိုး
+                            elif "3 month" in rem_lower or "3 လ" in rem_lower:
+                                suggested_code = "INT-3" # 1.5% x 3 လစာအတိုး
+                            elif "7 month" in rem_lower or "7 လ" in rem_lower:
+                                suggested_code = "INT-5" # 1.5% x 7 လစာအတိုး
+                            elif "9 month" in rem_lower or "9 လ" in rem_lower:
+                                suggested_code = "INT-6" # 1.5% x 9 လစာအတိုး
+                            elif "1 month" in rem_lower or "1 လ" in rem_lower:
+                                suggested_code = "INT-7" # 1.5% x 1 လစာအတိုး
+                            elif "2 month" in rem_lower or "2 လ" in rem_lower:
+                                suggested_code = "INT-8" # 1.5% x 2 လစာအတိုး
+
+                            unmapped_list.append({
+                                'id': f"{inv_idx}_{item_idx}",
+                                'invoice_no': invoice_no,
+                                'customer': customer,
+                                'remark': remark,
+                                'raw_code': raw_code,
+                                'raw_name': raw_name,
+                                'amount': amount,
+                                'suggested_code': suggested_code
+                            })
 
             return {
                 'success': True,
-                'unmapped_count': len(unmapped),
-                'unmapped_items': list(unmapped.values()),
+                'unmapped_count': len(unmapped_list),
+                'unmapped_items': unmapped_list,
                 'erp_options': erp_items
             }
         except Exception as e:
@@ -264,65 +324,24 @@ class Api:
             if out_dir:
                 os.makedirs(out_dir, exist_ok=True)
 
-            mapping_dict = {}
-            if os.path.exists(erp_mapping_file):
-                map_df = pd.read_csv(erp_mapping_file)
-                for _, row in map_df.iterrows():
-                    item_name = str(row['Items Name (Key)']).strip()
-                    item_code = str(row['Item Code']).strip()
-                    payment = str(row['Payment']).strip()
-                    mapping_dict[item_name] = {'code': item_code, 'name': item_name, 'payment': payment}
-                    mapping_dict[item_code] = {'code': item_code, 'name': item_name, 'payment': payment}
+            mapping_dict, _ = load_erp_mapping(erp_mapping_file)
+            invoices = parse_invoices_from_raw(raw_file)
 
-            # Runtime mapping update & auto-save into ERP mapping CSV
+            # Map of runtime selections keyed by id "{inv_idx}_{item_idx}"
+            custom_map_by_id = {}
             if custom_mappings and isinstance(custom_mappings, list):
-                new_mappings_for_csv = []
                 for m in custom_mappings:
-                    raw_key = m.get('raw_key', '').strip()
-                    selected_code = m.get('selected_code', '').strip()
-                    selected_name = m.get('selected_name', '').strip()
-                    selected_payment = m.get('selected_payment', 'MMK').strip()
-
-                    if raw_key and selected_code:
-                        entry = {'code': selected_code, 'name': selected_name, 'payment': selected_payment}
-                        mapping_dict[raw_key] = entry
-                        new_mappings_for_csv.append({'Item Code': selected_code, 'Items Name (Key)': raw_key, 'Payment': selected_payment})
-
-                if new_mappings_for_csv and os.path.exists(erp_mapping_file):
-                    append_df = pd.DataFrame(new_mappings_for_csv)
-                    append_df.to_csv(erp_mapping_file, mode='a', header=False, index=False, encoding='utf-8-sig')
-
-            with open(raw_file, mode='r', encoding='utf-8-sig', errors='ignore') as f:
-                reader = list(csv.reader(f))
-
-            invoices = []
-            current_inv = None
-
-            for row in reader:
-                if not any(row):
-                    continue
-                row_str = " ".join(row)
-                if "Docid :" in row_str:
-                    if current_inv:
-                        invoices.append(current_inv)
-                    current_inv = {'header': [], 'items': [], 'summary': []}
-                    current_inv['header'].append(row)
-                elif current_inv is not None:
-                    if any(k in row_str for k in ['Customer :', 'Location :', 'MemberCard :']):
-                        current_inv['header'].append(row)
-                    elif 'Code' in row[0] and 'Description' in row_str:
-                        continue
-                    elif any(k in row_str for k in IGNORE_SUMMARY_KEYWORDS):
-                        current_inv['summary'].append(row)
-                    else:
-                        current_inv['items'].append(row)
-
-            if current_inv:
-                invoices.append(current_inv)
+                    row_id = m.get('id')
+                    if row_id:
+                        custom_map_by_id[row_id] = {
+                            'code': m.get('selected_code'),
+                            'name': m.get('selected_name'),
+                            'payment': m.get('selected_payment', 'MMK')
+                        }
 
             final_rows = []
 
-            for inv in invoices:
+            for inv_idx, inv in enumerate(invoices):
                 invoice_no = ""
                 date_str = ""
                 customer = ""
@@ -330,36 +349,44 @@ class Api:
 
                 for h_row in inv['header']:
                     for cell in h_row:
-                        cell = cell.strip()
-                        if cell.startswith("InvoiceNo :"):
-                            invoice_no = cell.replace("InvoiceNo :", "").strip()
-                        elif cell.startswith("Date :"):
-                            raw_d = cell.replace("Date :", "").strip()
+                        cell_s = cell.strip()
+                        if cell_s.startswith("InvoiceNo :"):
+                            invoice_no = cell_s.replace("InvoiceNo :", "").strip()
+                        elif cell_s.startswith("Date :"):
+                            raw_d = cell_s.replace("Date :", "").strip()
                             parts = raw_d.split('/')
                             if len(parts) == 3:
                                 date_str = f"{int(parts[1]):02d}-{int(parts[0]):02d}-{parts[2]}"
                             else:
                                 date_str = raw_d
-                        elif cell.startswith("Customer :"):
-                            customer = cell.replace("Customer :", "").strip()
-                        elif cell.startswith("Location :"):
-                            location = cell.replace("Location :", "").strip()
+                        elif cell_s.startswith("Customer :"):
+                            customer = cell_s.replace("Customer :", "").strip()
+                        elif cell_s.startswith("Location :"):
+                            location = cell_s.replace("Location :", "").strip()
 
                 customer_display = "Temporary" if (customer == "Customer" or not customer) else customer
 
                 first_item = True
-                for it in inv['items']:
+                for item_idx, it in enumerate(inv['items']):
+                    row_key_id = f"{inv_idx}_{item_idx}"
                     final_item_code = ""
                     item_name = ""
                     matched_info = None
 
-                    for cell in it:
-                        c_clean = cell.strip()
-                        if c_clean in mapping_dict:
-                            matched_info = mapping_dict[c_clean]
-                            final_item_code = matched_info['code']
-                            item_name = matched_info['name']
-                            break
+                    # 1. Check custom per-row mapping first
+                    if row_key_id in custom_map_by_id:
+                        matched_info = custom_map_by_id[row_key_id]
+                        final_item_code = matched_info['code']
+                        item_name = matched_info['name']
+                    else:
+                        # 2. Check global mapping
+                        for cell in it:
+                            c_clean = cell.strip()
+                            if c_clean in mapping_dict:
+                                matched_info = mapping_dict[c_clean]
+                                final_item_code = matched_info['code']
+                                item_name = matched_info['name']
+                                break
 
                     if not final_item_code:
                         continue
@@ -446,6 +473,7 @@ class Api:
         except Exception as e:
             return {'success': False, 'message': str(e)}
 
+# Modern Web UI Layout
 HTML_UI = """
 <!DOCTYPE html>
 <html lang="en">
@@ -464,7 +492,7 @@ HTML_UI = """
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background: var(--bg); color: var(--text-main); padding: 24px; }
-        .container { max-width: 820px; margin: 0 auto; }
+        .container { max-width: 860px; margin: 0 auto; }
         .header { margin-bottom: 20px; }
         .header h1 { font-size: 22px; font-weight: 700; color: var(--text-main); }
         .header p { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
@@ -490,10 +518,14 @@ HTML_UI = """
 
         /* Modal Popup */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
-        .modal-content { background: #fff; width: 90%; max-width: 820px; max-height: 85vh; border-radius: 12px; padding: 24px; display: flex; flex-direction: column; }
+        .modal-content { background: #fff; width: 95%; max-width: 900px; max-height: 88vh; border-radius: 12px; padding: 24px; display: flex; flex-direction: column; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
-        .modal-body { overflow-y: auto; flex: 1; margin-bottom: 16px; }
-        .mapping-row { display: grid; grid-template-columns: 1.2fr 1.8fr; gap: 12px; padding: 10px; background: #f8fafc; border-radius: 6px; margin-bottom: 8px; border: 1px solid var(--border); align-items: center; }
+        .modal-body { overflow-y: auto; flex: 1; margin-bottom: 16px; padding-right: 6px; }
+        
+        .mapping-card { padding: 12px; background: #f8fafc; border-radius: 8px; margin-bottom: 10px; border: 1px solid var(--border); }
+        .mapping-header { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+        .mapping-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: center; }
+        .remark-box { font-size: 11.5px; background: #fff; padding: 6px 8px; border-radius: 4px; border: 1px dashed #cbd5e1; color: #334155; margin-top: 4px; }
         .modal-footer { display: flex; justify-content: flex-end; gap: 10px; }
     </style>
 </head>
@@ -501,7 +533,7 @@ HTML_UI = """
     <div class="container">
         <div class="header">
             <h1>ERP Sales Invoice Data Cleaner</h1>
-            <p>Clean raw invoice exports with automated interactive mapping</p>
+            <p>Clean raw invoice exports with automated interactive mapping & remark context</p>
         </div>
 
         <div class="card">
@@ -550,13 +582,13 @@ HTML_UI = """
         <div class="log-box" id="logBox">Ready to process...</div>
     </div>
 
-    <!-- Interactive Mapping Modal -->
+    <!-- Interactive Mapping Modal with Remark Context -->
     <div class="modal" id="mapModal">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
                     <h3 style="font-size: 16px; font-weight: 700;">Unmapped Items Detected</h3>
-                    <p style="font-size: 12px; color: var(--text-muted);">Please link raw item names with the correct ERP items below:</p>
+                    <p style="font-size: 12px; color: var(--text-muted);">Review invoice remarks and map to the corresponding ERP item rate:</p>
                 </div>
             </div>
             <div class="modal-body" id="mappingList"></div>
@@ -610,7 +642,7 @@ HTML_UI = """
                 return;
             }
 
-            log("Scanning raw file for unmapped items...");
+            log("Scanning raw file for unmapped items & checking remarks...");
             const scan = await pywebview.api.check_unmapped_items(currentConfig.raw_file, currentConfig.erp_mapping_file);
             
             if (scan.success && scan.unmapped_count > 0) {
@@ -626,26 +658,34 @@ HTML_UI = """
             const list = document.getElementById('mappingList');
             list.innerHTML = "";
 
-            unmapped.forEach((item, index) => {
+            unmapped.forEach((item) => {
                 let optionsHtml = `<option value="">-- Ignore this item --</option>`;
                 erpOptions.forEach(opt => {
-                    optionsHtml += `<option value="${opt.code}" data-name="${opt.name}" data-payment="${opt.payment}">${opt.code} | ${opt.name} (${opt.payment})</option>`;
+                    const isSelected = (item.suggested_code === opt.code) ? "selected" : "";
+                    optionsHtml += `<option value="${opt.code}" data-name="${opt.name}" data-payment="${opt.payment}" ${isSelected}>${opt.code} | ${opt.name} (${opt.payment})</option>`;
                 });
 
-                const row = document.createElement('div');
-                row.className = 'mapping-row';
-                row.innerHTML = `
-                    <div>
-                        <strong style="font-size: 13px; color: #b91c1c;">${item.raw_name}</strong>
-                        <div style="font-size: 11px; color: #64748b;">Code: ${item.raw_code}</div>
+                const card = document.createElement('div');
+                card.className = 'mapping-card';
+                card.innerHTML = `
+                    <div class="mapping-header">
+                        <span><strong>Inv:</strong> ${item.invoice_no || 'N/A'} | <strong>Customer:</strong> ${item.customer || 'Temporary'}</span>
+                        <span style="color: #047857; font-weight: 600;">Amount: ${item.amount} MMK</span>
                     </div>
-                    <div>
-                        <select id="map_select_${index}">
-                            ${optionsHtml}
-                        </select>
+                    <div class="mapping-grid">
+                        <div>
+                            <div style="font-size: 13px; font-weight: 600; color: #b91c1c;">${item.raw_name} <span style="font-size:11px; color:#64748b;">(${item.raw_code})</span></div>
+                            <div class="remark-box" title="${item.remark}"><strong>Remark:</strong> ${item.remark ? item.remark : '<em>No remark provided</em>'}</div>
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; color: #64748b; margin-bottom: 2px; display: block;">Select ERP Standard Item:</label>
+                            <select id="map_select_${item.id}">
+                                ${optionsHtml}
+                            </select>
+                        </div>
                     </div>
                 `;
-                list.appendChild(row);
+                list.appendChild(card);
             });
 
             document.getElementById('mapModal').style.display = 'flex';
@@ -658,12 +698,12 @@ HTML_UI = """
 
         async function applyMappingsAndRun() {
             const mappings = [];
-            cachedUnmappedItems.forEach((item, index) => {
-                const sel = document.getElementById(`map_select_${index}`);
+            cachedUnmappedItems.forEach((item) => {
+                const sel = document.getElementById(`map_select_${item.id}`);
                 if (sel && sel.value) {
                     const selectedOpt = sel.options[sel.selectedIndex];
                     mappings.push({
-                        raw_key: item.raw_name,
+                        id: item.id,
                         selected_code: sel.value,
                         selected_name: selectedOpt.getAttribute('data-name'),
                         selected_payment: selectedOpt.getAttribute('data-payment')
@@ -697,8 +737,8 @@ def main():
         title='ERP Sales Invoice Cleaning Tool',
         html=HTML_UI,
         js_api=api,
-        width=880,
-        height=740,
+        width=920,
+        height=760,
         resizable=True
     )
     api.set_window(window)
