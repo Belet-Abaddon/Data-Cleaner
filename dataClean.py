@@ -275,21 +275,21 @@ class Api:
                             suggested_code = ""
                             rem_lower = (remark + " " + raw_name).lower()
                             if "12 month" in rem_lower or "12 လ" in rem_lower:
-                                suggested_code = "INT-4" # 1.5% x 12 လစာအတိုး
+                                suggested_code = "INT-4"
                             elif "6 month" in rem_lower or "6 လ" in rem_lower:
-                                suggested_code = "INT-1" # 1.5% x 6 လစာအတိုး
+                                suggested_code = "INT-1"
                             elif "8 month" in rem_lower or "8 လ" in rem_lower:
-                                suggested_code = "INT-2" # 1.5% x 8 လစာအတိုး
+                                suggested_code = "INT-2"
                             elif "3 month" in rem_lower or "3 လ" in rem_lower:
-                                suggested_code = "INT-3" # 1.5% x 3 လစာအတိုး
+                                suggested_code = "INT-3"
                             elif "7 month" in rem_lower or "7 လ" in rem_lower:
-                                suggested_code = "INT-5" # 1.5% x 7 လစာအတိုး
+                                suggested_code = "INT-5"
                             elif "9 month" in rem_lower or "9 လ" in rem_lower:
-                                suggested_code = "INT-6" # 1.5% x 9 လစာအတိုး
+                                suggested_code = "INT-6"
                             elif "1 month" in rem_lower or "1 လ" in rem_lower:
-                                suggested_code = "INT-7" # 1.5% x 1 လစာအတိုး
+                                suggested_code = "INT-7"
                             elif "2 month" in rem_lower or "2 လ" in rem_lower:
-                                suggested_code = "INT-8" # 1.5% x 2 လစာအတိုး
+                                suggested_code = "INT-8"
 
                             unmapped_list.append({
                                 'id': f"{inv_idx}_{item_idx}",
@@ -327,7 +327,6 @@ class Api:
             mapping_dict, _ = load_erp_mapping(erp_mapping_file)
             invoices = parse_invoices_from_raw(raw_file)
 
-            # Map of runtime selections keyed by id "{inv_idx}_{item_idx}"
             custom_map_by_id = {}
             if custom_mappings and isinstance(custom_mappings, list):
                 for m in custom_mappings:
@@ -346,6 +345,7 @@ class Api:
                 date_str = ""
                 customer = ""
                 location = "SYS"
+                voucher_discount = ""
 
                 for h_row in inv['header']:
                     for cell in h_row:
@@ -364,6 +364,16 @@ class Api:
                         elif cell_s.startswith("Location :"):
                             location = cell_s.replace("Location :", "").strip()
 
+                # Extract Voucher Discount from Invoice Summary rows
+                for s_row in inv['summary']:
+                    s_row_str = " ".join(s_row)
+                    if "Voucher Discount" in s_row[0] or "Voucher Discount" in s_row_str:
+                        for cell in s_row:
+                            c = cell.strip().replace(',', '')
+                            if c != "" and (c.isdigit() or (c.replace('.', '', 1).isdigit() and '.' in c)):
+                                voucher_discount = int(float(c))
+                                break
+
                 customer_display = "Temporary" if (customer == "Customer" or not customer) else customer
 
                 first_item = True
@@ -373,13 +383,11 @@ class Api:
                     item_name = ""
                     matched_info = None
 
-                    # 1. Check custom per-row mapping first
                     if row_key_id in custom_map_by_id:
                         matched_info = custom_map_by_id[row_key_id]
                         final_item_code = matched_info['code']
                         item_name = matched_info['name']
                     else:
-                        # 2. Check global mapping
                         for cell in it:
                             c_clean = cell.strip()
                             if c_clean in mapping_dict:
@@ -417,6 +425,7 @@ class Api:
 
                     row_data = {col: "" for col in SALES_INVOICE_COLUMNS}
 
+                    # Header Columns on First Item of Invoice
                     if first_item:
                         row_data['Company'] = config.get('company', 'Seinn Yaung So')
                         row_data['Series'] = config.get('series', 'ACC-SINV-.YYYY.-')
@@ -430,6 +439,10 @@ class Api:
                         row_data['Update Stock'] = 1.0
                         row_data['Is Opening Entry'] = 'No'
                         row_data['Remarks'] = invoice_no
+                        
+                        # Voucher Discount placed in Additional Discount Amount
+                        if voucher_discount != "":
+                            row_data['Additional Discount Amount'] = voucher_discount
 
                     row_data['Item (Items)'] = final_item_code
                     row_data['Item Name (Items)'] = item_name
